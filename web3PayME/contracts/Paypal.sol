@@ -5,6 +5,7 @@ contract Paypal {
 
     address public owner;
 
+    //1. creating structure for request, transaction and userName
     struct Request { 
         address requester;
         uint256 amount;
@@ -23,7 +24,7 @@ contract Paypal {
         bool hasName;
     }
 
-    // mapping for request, transaction, and userName
+    //2. mapping for request, transaction, and userName
     mapping(address => UserName) public names;
     mapping(address => Request[]) public requests; 
     mapping(address => SendReceive[]) public history; 
@@ -37,12 +38,12 @@ contract Paypal {
         owner = msg.sender; 
     }
 
-    // Adding name to wallet
+    //3. Adding name to wallet
     function addName(string memory _name) public {
         names[msg.sender] = UserName(_name, true);
     }
 
-    // Creating request
+    //4. Creating request
     function createRequest(uint256 _amount, string memory _message) public {
         Request memory newRequest;
         newRequest.requester = msg.sender;
@@ -56,7 +57,7 @@ contract Paypal {
         requests[msg.sender].push(newRequest);
     }
 
-    // Payment for request
+    //5. Payment for request
     function payRequest(uint256 _request) public payable {
         require(_request < requests[msg.sender].length, "No Such Request");
         Request[] storage myRequests = requests[msg.sender];
@@ -69,7 +70,7 @@ contract Paypal {
         myRequests.pop();
     }
 
-    // saving history
+    //6. saving history
     function addHistory(address sender, address receiver, uint256 _amount, string memory _message) private {
         SendReceive memory newSend;
         newSend.action = "Send";
@@ -86,22 +87,22 @@ contract Paypal {
         history[receiver].push(newReceive);
     }
 
-    // Sending request to user
+    //7. Sending request to user
     function getMyRequests() public view returns (Request[] memory) {
         return requests[msg.sender];
     }
 
-    // viewing saved hostory
+    //8. viewing saved hostory
     function getMyHistory() public view returns (SendReceive[] memory) {
         return history[msg.sender];
     }
 
-    //retrieve username associated with address
+    //9. retrieve username associated with address
     function getMyName() public view returns (UserName memory) {
         return names[msg.sender];
     }
 
-    // to change owner of contract
+    //10. to change owner of contract
     function setOwner(address newOwner) public onlyOwner {
         owner = newOwner;
     }  
