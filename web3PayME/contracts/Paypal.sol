@@ -5,91 +5,104 @@ contract Paypal {
 
     address public owner;
 
-    constructor() {
-        owner = msg.sender; // Corrected msg.sender assignment
-    }
-
-    struct Request { // Corrected struct name to start with an uppercase letter
+    struct Request { 
         address requester;
         uint256 amount;
         string message;
-        string name;
     }
 
-    struct SendReceive { // Corrected struct name to start with an uppercase letter
+    struct SendReceive {
         string action;
         uint256 amount;
         string message;
         address otherPartyAddress;
-        string otherPartyName;
     }
 
-    struct UserName { // Corrected struct name to start with an uppercase letter
+    struct UserName { 
         string name;
         bool hasName;
     }
 
     // mapping for request, transaction, and userName
     mapping(address => UserName) public names;
-    mapping(address => Request[]) public requests; // Added "public" to make it accessible
-    mapping(address => SendReceive[]) public history; // Added "public" to make it accessible
+    mapping(address => Request[]) public requests; 
+    mapping(address => SendReceive[]) public history; 
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "This function can be only called by Owner!");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender; 
+    }
 
     // Adding name to wallet
     function addName(string memory _name) public {
-        UserName storage newUserName = names[msg.sender];
-        newUserName.name = _name; // Corrected the assignment of name
-        newUserName.hasName = true;
+        names[msg.sender] = UserName(_name, true);
     }
 
     // Creating request
-    function createRequest(address user, uint256 _amount, string memory _message) public {
+    function createRequest(uint256 _amount, string memory _message) public {
         Request memory newRequest;
         newRequest.requester = msg.sender;
         newRequest.amount = _amount;
         newRequest.message = _message;
-
-        // Checking the association between username and address
+        
         if (names[msg.sender].hasName) {
-            newRequest.name = names[msg.sender].name;
+            newRequest.message = names[msg.sender].name;
         }
 
-        requests[user].push(newRequest);
+        requests[msg.sender].push(newRequest);
     }
 
     // Payment for request
     function payRequest(uint256 _request) public payable {
-        require(_request < requests[msg.sender].length, "No Such Request Found!");
-        Request storage payableRequest = requests[msg.sender][_request]; // Corrected variable name
-
-        uint256 toPay = payableRequest.amount * 1 ether; // Corrected the conversion
+        require(_request < requests[msg.sender].length, "No Such Request");
+        Request[] storage myRequests = requests[msg.sender];
+        Request storage payableRequest = myRequests[_request];
+        uint256 toPay = payableRequest.amount * 1 ether;
         require(msg.value == toPay, "Pay Correct Amount");
-
         payable(payableRequest.requester).transfer(msg.value);
+        addHistory(msg.sender, payableRequest.requester, payableRequest.amount, payableRequest.message);
+        myRequests[_request] = myRequests[myRequests.length - 1];
+        myRequests.pop();
+    }
 
-        requests[msg.sender][_request] = requests[msg.sender][requests[msg.sender].length - 1]; // Corrected variable names
-        requests[msg.sender].pop();
+    // saving history
+    function addHistory(address sender, address receiver, uint256 _amount, string memory _message) private {
+        SendReceive memory newSend;
+        newSend.action = "Send";
+        newSend.amount = _amount;
+        newSend.message = _message;
+        newSend.otherPartyAddress = receiver;
+        history[sender].push(newSend);
+
+        SendReceive memory newReceive;
+        newReceive.action = "Receive";
+        newReceive.amount = _amount;
+        newReceive.message = _message;
+        newReceive.otherPartyAddress = sender;
+        history[receiver].push(newReceive);
     }
 
     // Sending request to user
-    function getMyRequests(address _user) public view returns(
-        address[] memory, 
-        uint256[] memory, 
-        string[] memory, 
-        string[] memory) {
+    function getMyRequests() public view returns (Request[] memory) {
+        return requests[msg.sender];
+    }
 
-        address[] memory addrs = new address[](requests[_user].length);
-        uint256[] memory amnt = new uint256[](requests[_user].length);
-        string[] memory msge = new string[](requests[_user].length);
-        string[] memory nme = new string[](requests[_user].length);
+    // viewing saved hostory
+    function getMyHistory() public view returns (SendReceive[] memory) {
+        return history[msg.sender];
+    }
 
-        for (uint i = 0; i < requests[_user].length; i++) {
-            Request storage myRequest = requests[_user][i]; // Corrected variable name
-            addrs[i] = myRequest.requester;
-            amnt[i] = myRequest.amount;
-            msge[i] = myRequest.message;
-            nme[i] = myRequest.name;
-        }
+    //retrieve username associated with address
+    function getMyName() public view returns (UserName memory) {
+        return names[msg.sender];
+    }
 
-        return (addrs, amnt, msge, nme);
-    }   
+    // to change owner of contract
+    function setOwner(address newOwner) public onlyOwner {
+        owner = newOwner;
+    }  
 }
