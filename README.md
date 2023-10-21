@@ -10,7 +10,7 @@ A web-based wallet application that allows users to connect their wallets, view 
 1. `Clone the repository`
 2. `Install dependencies using npm install`
 3. `Configure your environment variables in a .env file`
-    - POLYGON_MUMBAI RPCL URL LINK = 'https://polygon-mumbai.infura.io/v3/REPLACE WITH YOUR RPCL
+    - POLYGON_MUMBAI RPCL URL LINK = 'https://polygon-mumbai.infura.io/v3/ REPLACE WITH YOUR RPCL
     - PRIVATE_KEY = 'METAMASK PRIVATE KEY'
     - API_KEY = REPLACE IT WITH YOUR API KEY
    
