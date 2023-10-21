@@ -5,6 +5,15 @@ hackathon
 # Payment Wallet
 A web-based wallet application that allows users to connect their wallets, view their balances, send and receive tokens, and perform various wallet-related actions..
 
+
+# Features
+
+  1. Wallet connection using MetaMask
+  2. View wallet balance in multiple currencies
+  3. Send and receive tokens
+  4. Transaction history and recent activity
+  4. User account details and summary
+
 # Backend Setup
 
 1. `Clone the repository`
