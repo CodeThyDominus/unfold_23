@@ -1,79 +1,65 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-contract Paypal {
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+contract PaymentGateway {
     address public owner;
 
-    //1. creating structure for request, transaction and userName
-    struct Request { 
+    struct Request {
         address requester;
+        address token;
         uint256 amount;
         string message;
     }
 
     struct SendReceive {
         string action;
+        address token;
         uint256 amount;
         string message;
         address otherPartyAddress;
     }
 
-    struct UserName { 
-        string name;
-        bool hasName;
-    }
-
-    //2. mapping for request, transaction, and userName
-    mapping(address => UserName) public names;
-    mapping(address => Request[]) public requests; 
-    mapping(address => SendReceive[]) public history; 
+    mapping(address => Request[]) public requests;
+    mapping(address => SendReceive[]) public history;
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "This function can be only called by Owner!");
+        require(msg.sender == owner, "This function can be only called by the owner!");
         _;
     }
 
     constructor() {
-        owner = msg.sender; 
+        owner = msg.sender;
     }
 
-    //3. Adding name to wallet
-    function addName(string memory _name) public {
-        names[msg.sender] = UserName(_name, true);
-    }
-
-    //4. Creating request
-    function createRequest(uint256 _amount, string memory _message) public {
+    function createRequest(address _token, uint256 _amount, string memory _message) public {
+        require(IERC20(_token).transferFrom(msg.sender, address(this), _amount), "Token transfer failed");
         Request memory newRequest;
         newRequest.requester = msg.sender;
+        newRequest.token = _token;
         newRequest.amount = _amount;
         newRequest.message = _message;
-        
-        if (names[msg.sender].hasName) {
-            newRequest.message = names[msg.sender].name;
-        }
 
         requests[msg.sender].push(newRequest);
     }
 
-    //5. Payment for request
-    function payRequest(uint256 _request) public payable {
-        require(_request < requests[msg.sender].length, "No Such Request");
-        Request[] storage myRequests = requests[msg.sender];
-        Request storage payableRequest = myRequests[_request];
-        uint256 toPay = payableRequest.amount * 1 ether;
-        require(msg.value == toPay, "Pay Correct Amount");
-        payable(payableRequest.requester).transfer(msg.value);
-        addHistory(msg.sender, payableRequest.requester, payableRequest.amount, payableRequest.message);
-        myRequests[_request] = myRequests[myRequests.length - 1];
-        myRequests.pop();
+    function payRequest(uint256 _requestIndex) public {
+        require(_requestIndex < requests[msg.sender].length, "No Such Request");
+        Request storage payableRequest = requests[msg.sender][_requestIndex];
+
+        require(IERC20(payableRequest.token).transfer(msg.sender, payableRequest.amount), "Token transfer failed");
+        addHistory(msg.sender, payableRequest.token, msg.sender, payableRequest.amount, payableRequest.message);
+
+        // Remove the request after payment
+        requests[msg.sender][_requestIndex] = requests[msg.sender][requests[msg.sender].length - 1];
+        requests[msg.sender].pop();
     }
 
-    //6. saving history
-    function addHistory(address sender, address receiver, uint256 _amount, string memory _message) private {
+    function addHistory(address sender, address token, address receiver, uint256 _amount, string memory _message) private {
         SendReceive memory newSend;
         newSend.action = "Send";
+        newSend.token = token;
         newSend.amount = _amount;
         newSend.message = _message;
         newSend.otherPartyAddress = receiver;
@@ -81,30 +67,18 @@ contract Paypal {
 
         SendReceive memory newReceive;
         newReceive.action = "Receive";
+        newReceive.token = token;
         newReceive.amount = _amount;
         newReceive.message = _message;
         newReceive.otherPartyAddress = sender;
         history[receiver].push(newReceive);
     }
 
-    //7. Sending request to user
     function getMyRequests() public view returns (Request[] memory) {
         return requests[msg.sender];
     }
 
-    //8. viewing saved hostory
     function getMyHistory() public view returns (SendReceive[] memory) {
         return history[msg.sender];
     }
-
-    //9. retrieve username associated with address
-    function getMyName() public view returns (UserName memory) {
-        return names[msg.sender];
-    }
-
-    //10. to change owner of contract
-    function setOwner(address newOwner) public onlyOwner {
-        owner = newOwner;
-    }  
-    
 }
